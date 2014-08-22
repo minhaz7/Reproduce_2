@@ -1,0 +1,175 @@
+---
+title: "IMPACT OF WEATHER DISASTERS ON U.S. HEALTH AND ECONOMY"
+author: "Sk Minhazul Islam"
+date: "Thursday, August 21, 2014"
+output: pdf_document
+---
+
+### Synopsis ###
+
+Storms and other severe weather events can cause both public health and economic problems for communities and municipalities. Many severe events can result in fatalities, injuries, and property damage, and preventing such outcomes to the extent possible is a key concern.
+
+This report explores the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database and analyses which weather events are more severe in terms of damage to health and economy in the United States, from 1950 to 2011. Impact on health has been assessed through the number of injured and dead people as a result of weather disasters. Similarly, impact on economy has been assessed through the monetary damage caused to property and crops by these weather events.
+
+### Data Processing ###
+
+The data set is downloaded from the provided Url
+```{r}
+
+fileurl<-"http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
+download.file(fileurl, destfile = "repdata_data_StormData.csv.bz2")
+```
+The file is unzipped and read
+
+```{r}
+
+data <- read.csv(bzfile("repdata_data_StormData.csv.bz2"))
+
+```
+After having a look at the data, we decide to extract a subset just containing the information that will be used to make the analysis.
+
+We extract the following columns from the original matrix:
+
+```{r}
+
+subdata <- data[c("EVTYPE", "FATALITIES", "INJURIES", "PROPDMG", "PROPDMGEXP", "CROPDMG", "CROPDMGEXP")]
+
+```
+
+Some processing is needed to calculate the total amount of dollars derived from property and crop damage:
+
+Conversion from factor class to character class:
+
+```{r}
+
+subdata$PROPDMGEXP <- as.character(subdata$PROPDMGEXP)
+subdata$CROPDMGEXP <- as.character(subdata$CROPDMGEXP)
+
+```
+Conversion to upper letters (h to H, m to M, b to B):
+
+```{r}
+
+subdata$PROPDMGEXP <- toupper(subdata$PROPDMGEXP)
+subdata$CROPDMGEXP <- toupper(subdata$CROPDMGEXP)
+
+```
+Processing of symbols: "-", "+", "?", "H", "M", "B"
+
+For Property damage:
+
+```{r}
+
+subdata[which(subdata$PROPDMGEXP == "" | subdata$PROPDMGEXP == "-" | subdata$PROPDMGEXP == "?" | subdata$PROPDMGEXP == "+" | subdata$PROPDMGEXP == "0"), ]$PROPDMGEXP <- "1"
+subdata[which(subdata$PROPDMGEXP == "H"), ]$PROPDMGEXP <- "100" 
+subdata[which(subdata$PROPDMGEXP == "K"), ]$PROPDMGEXP <- "1000" 
+subdata[which(subdata$PROPDMGEXP == "M"), ]$PROPDMGEXP <- "1000000" 
+subdata[which(subdata$PROPDMGEXP == "B"), ]$PROPDMGEXP <- "1000000000"
+subdata$PROPDMG_TOT <- subdata$PROPDMG * as.numeric(subdata$PROPDMGEXP)
+
+```
+
+For Crop damage:
+
+```{r}
+
+subdata[which(subdata$ CROPDMGEXP == "" | subdata$CROPDMGEXP == "?" | subdata$CROPDMGEXP == "0"), ]$CROPDMGEXP <- "1"
+subdata[which(subdata$CROPDMGEXP == "K"), ]$CROPDMGEXP <- "1000" 
+subdata[which(subdata$CROPDMGEXP == "M"), ]$CROPDMGEXP <- "1000000" 
+subdata[which(subdata$CROPDMGEXP == "B"), ]$CROPDMGEXP <- "1000000000"
+subdata$CROPDMG_TOT <- subdata$CROPDMG * as.numeric(subdata$CROPDMGEXP)
+
+```
+We calculate the total amount of fatalities and injuries to assess the impact of weather disasters on health
+
+```{r}
+
+TOTALS_CASUALTIES <- data.frame(
+    INJURIES = tapply(subdata$INJURIES, subdata$EVTYPE, sum),            
+    FATALITIES = tapply(subdata$FATALITIES, subdata$EVTYPE, sum))
+
+```
+We get them ordered:
+
+```{r}
+
+ORDERED_INJURIES<-TOTALS_CASUALTIES[order(TOTALS_CASUALTIES$INJURIES, decreasing=T),]
+ORDERED_FATALITIES<-TOTALS_CASUALTIES[order(TOTALS_CASUALTIES$FATALITIES, decreasing=T),]
+
+```
+
+We extract the first 10
+
+```{r}
+
+TEN_ORDERED_INJURIES<-ORDERED_INJURIES[1:10,]
+TEN_ORDERED_FATALITIES<-ORDERED_FATALITIES[1:10,]
+
+
+```
+We add the total money lost as a consequence from the damage caused by weather disasters on property and crops
+
+```{r}
+
+TOTALS_ECONOMIC <- data.frame(
+    PROPERTY = tapply(subdata$PROPDMG_TOT, subdata$EVTYPE, sum),            
+    CROP = tapply(subdata$CROPDMG_TOT, subdata$EVTYPE, sum))
+
+```
+We get them ordered:
+
+```{r}
+
+ORDERED_PROPERTY<-TOTALS_ECONOMIC[order(TOTALS_ECONOMIC$PROPERTY, decreasing=T),]
+ORDERED_CROP<-TOTALS_ECONOMIC[order(TOTALS_ECONOMIC$CROP, decreasing=T),]
+
+
+```
+We extract the first 10
+
+```{r}
+
+TEN_ORDERED_PROPERTY<-ORDERED_PROPERTY[1:10,]
+TEN_ORDERED_CROP<-ORDERED_CROP[1:10,]
+
+
+```
+
+
+### Results ###
+
+Now we will present the results of our analysis, first in terms of the impact on health, and this in turn will be evaluated separately through the number of fatalities and the number of injuries.
+
+```{r, echo=TRUE}
+
+par(las=2) 
+par(mar=c(5,10,4,2)) 
+barplot(height=TEN_ORDERED_FATALITIES$FATALITIES, names.arg=rownames(TEN_ORDERED_FATALITIES), main="NUMBER OF FATALITIES DEPENDING ON THE EVENT", horiz=T, cex.names=0.8, col="red")
+
+```
+
+From the graph above we can conclude that when it comes to evaluate the impact of weather events on health, if we consider as an indicator the number of Fatalities, it comes out that tornados are the most harmfull weather disaster, with 5633 casualties, followed by excessive heat, with 1903and flash floods with 978.
+
+```{r, echo=TRUE}
+
+par(las=2) 
+par(mar=c(5,10,4,2)) 
+barplot(height=TEN_ORDERED_INJURIES$INJURIES, names.arg=rownames(TEN_ORDERED_INJURIES), main="NUMBER OF INJURIES DEPENDING ON THE EVENT", horiz=T, cex.names=0.8, col="red")
+
+```
+
+When we analyse the number of injuries derived from weather events, it turns out again that tornados are the most harmful, with 91.346 victims, followed by thunderstorm winds with 6.957 and floods, with 6.789.
+
+Next we will analyse the economic impact of weather disasters on the U.S. and this time we will study the damage caused on property on the one hand, and on crops on the other.
+
+```{r, echo=TRUE}
+
+par(mfrow=c(1,2))
+par(las=2) 
+par(mar=c(5,8,4,2)) 
+barplot(height=TEN_ORDERED_PROPERTY$PROPERTY, names.arg=rownames(TEN_ORDERED_PROPERTY), main="DAMAGE ON PROPERTY", horiz=T, cex.names=0.8, col="blue")
+barplot(height=TEN_ORDERED_CROP$CROP, names.arg=rownames(TEN_ORDERED_CROP), main="DAMAGE ON CROPS", horiz=T, cex.names=0.8, col="blue")
+
+```
+
+In this case we have calculated the economic losses in both cases, and it turns out that floods are the most harmful for properties ($144.657.709.807), followed by hurricanes/typhoons ($69.305.840.000) and tornados ($56.937.161.188). In the case of damages to crops, the most harmful weather event is drought ($13.972.566.000), next comes flood ($5.661.968.450) and next river floods ($5.029.459.000).
